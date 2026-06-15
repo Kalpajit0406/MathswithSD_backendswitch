@@ -185,10 +185,17 @@ async function refreshDashboard() {
     const data = await res.json();
 
     // Host Info
-    document.getElementById('sys-hostname').textContent = data.hostname;
-    document.getElementById('sys-public-ip').textContent = data.publicIp;
-    document.getElementById('sys-uptime').textContent = formatUptime(data.system.uptime);
-    document.getElementById('sys-node-version').textContent = data.nodeVersion;
+    const elHostname = document.getElementById('sys-hostname');
+    if (elHostname) elHostname.textContent = data.hostname;
+
+    const elPublicIp = document.getElementById('sys-public-ip');
+    if (elPublicIp) elPublicIp.textContent = data.publicIp;
+
+    const elUptime = document.getElementById('sys-uptime');
+    if (elUptime) elUptime.textContent = formatUptime(data.system.uptime);
+
+    const elNodeVersion = document.getElementById('sys-node-version');
+    if (elNodeVersion) elNodeVersion.textContent = data.nodeVersion;
 
     // Upstream Banner
     currentActivePort = data.activePort;
