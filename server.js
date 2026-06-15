@@ -28,7 +28,7 @@ const PM2_CMD = process.env.PM2_CMD || 'pm2';
 let prevNetData = { rx: 0, tx: 0, time: Date.now() };
 let currentNetSpeeds = { rxSpeed: 0, txSpeed: 0 };
 
-// Cache Public IP to prevent rate limiting
+// Cache Public IP
 let cachedPublicIp = 'Fetching...';
 let ipCacheTime = 0;
 
@@ -80,7 +80,7 @@ async function getPublicIp() {
 
   try {
     const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 2000); // 2s timeout
+    const id = setTimeout(() => controller.abort(), 2000);
     const res = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
     const data = await res.json();
     clearTimeout(id);
@@ -96,7 +96,7 @@ async function getPublicIp() {
   return cachedPublicIp;
 }
 
-// Helper: Read system metrics (Linux native parsing)
+// Helper: Read system metrics
 function getSystemMetrics() {
   const totalMem = os.totalmem();
   const freeMem = os.freemem();
@@ -116,7 +116,7 @@ function getSystemMetrics() {
   });
   const cpuPercent = (((totalCpuTime - idleCpuTime) / totalCpuTime) * 100).toFixed(1);
 
-  // Disk space calculation (parsing df -B1 /)
+  // Disk space calculation
   let diskStats = { total: 0, used: 0, free: 0, percent: 0 };
   try {
     const output = require('child_process').execSync('df -B1 /').toString();
@@ -133,7 +133,7 @@ function getSystemMetrics() {
     diskStats = { total: 100000000000, used: 40000000000, free: 60000000000, percent: 40 };
   }
 
-  // Network stats calculation (parsing /proc/net/dev)
+  // Network stats calculation
   let rxBytes = 0;
   let txBytes = 0;
   try {
@@ -182,12 +182,15 @@ function getSystemMetrics() {
   };
 }
 
-// Helper: Parse current Nginx upstream configuration port
-function getNginxTargetPort() {
+// Helper: Parse current Nginx upstream configuration port/mode
+function getNginxTargetMode() {
   try {
     if (fs.existsSync(NGINX_SITE_CONF_PATH)) {
       const content = fs.readFileSync(NGINX_SITE_CONF_PATH, 'utf8');
-      // Match the port in proxy_pass line (e.g. proxy_pass http://127.0.0.1:5000;)
+      // If it has location /api block, it's split routing mode
+      if (content.includes('location /api')) {
+        return 'split';
+      }
       const match = content.match(/proxy_pass\s+http:\/\/(?:127\.0\.0\.1|localhost):(\d+)/i) || content.match(/proxy_pass\s+http:\/\/[^:]+:(\d+)/i);
       if (match) {
         return parseInt(match[1], 10);
@@ -197,6 +200,86 @@ function getNginxTargetPort() {
     console.error('Error reading Nginx config:', err);
   }
   return null;
+}
+
+// Helper: Template Nginx configurations dynamically
+function generateNginxConfig(mode) {
+  let locationBlocks = '';
+
+  if (mode === 'split') {
+    locationBlocks = `
+    location /api {
+        proxy_pass http://127.0.0.1:5000;
+
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:5001;
+
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+`;
+  } else {
+    // Single backend routing to either 5000 or 5001
+    locationBlocks = `
+    location / {
+        proxy_pass http://127.0.0.1:${mode};
+
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+`;
+  }
+
+  return `server {
+    client_max_body_size 100M;
+    listen 80;
+    listen [::]:80;
+
+    server_name api.mathswithsd.in;
+
+    return 301 https://$host$request_uri;
+}
+
+server {
+    client_max_body_size 100M;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+
+    server_name api.mathswithsd.in;
+
+    ssl_certificate /etc/letsencrypt/live/api.mathswithsd.in/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.mathswithsd.in/privkey.pem;
+${locationBlocks}
+}
+`;
 }
 
 // Helper: Retrieve PM2 processes status
@@ -289,20 +372,18 @@ async function checkApiHealth(port) {
 app.get('/api/status', async (req, res) => {
   const system = getSystemMetrics();
   const publicIp = await getPublicIp();
-  const activePort = getNginxTargetPort();
+  const activePort = getNginxTargetMode();
   
   // Live checks
   const health5000 = await checkApiHealth(5000);
   const health5001 = await checkApiHealth(5001);
 
   getPm2Processes((pm2Procs) => {
-    // Ensure all processes (mathswithsd-v2, mathswithsd-web, backend-switch) are represented
     const processes = ['mathswithsd-v2', 'mathswithsd-web', 'backend-switch'];
     const formattedProcs = processes.map(name => {
       const found = pm2Procs.find(p => p.name === name);
       if (found) return found;
       
-      // Return simulated Offline process if not found in PM2 list
       return {
         pid: 'DOWN',
         name,
@@ -329,15 +410,15 @@ app.get('/api/status', async (req, res) => {
 
 // Route: Route traffic in Nginx site config
 app.post('/api/backend/route', (req, res) => {
-  const { port } = req.body;
+  const target = req.body.port || req.body.mode;
 
-  if (port !== 5000 && port !== 5001) {
-    return res.status(400).json({ error: 'Invalid port specification. Only 5000 and 5001 are supported.' });
+  if (target !== 5000 && target !== 5001 && target !== 'split') {
+    return res.status(400).json({ error: 'Invalid target specification. Only 5000, 5001, and "split" are supported.' });
   }
 
-  const currentPort = getNginxTargetPort();
-  if (currentPort === port) {
-    return res.json({ success: true, message: `Nginx is already routing traffic to port ${port}` });
+  const currentMode = getNginxTargetMode();
+  if (currentMode === target) {
+    return res.json({ success: true, message: `Nginx is already routing traffic to ${target}` });
   }
 
   const backupPath = `${NGINX_SITE_CONF_PATH}.bak`;
@@ -352,20 +433,15 @@ app.post('/api/backend/route', (req, res) => {
     originalContent = fs.readFileSync(NGINX_SITE_CONF_PATH, 'utf8');
     fs.writeFileSync(backupPath, originalContent, 'utf8');
 
-    // 2. Perform port replacement on proxy_pass directive
-    const regex = /(proxy_pass\s+http:\/\/(?:127\.0\.0\.1|localhost):)\d+(;)/i;
-    if (!regex.test(originalContent)) {
-      return res.status(500).json({ error: 'Could not locate proxy_pass directive with port in Nginx config' });
-    }
-
-    const updatedContent = originalContent.replace(regex, `$1${port}$2`);
-    fs.writeFileSync(NGINX_SITE_CONF_PATH, updatedContent, 'utf8');
+    // 2. Write new templated configuration
+    const newConfig = generateNginxConfig(target);
+    fs.writeFileSync(NGINX_SITE_CONF_PATH, newConfig, 'utf8');
 
     // 3. Test Nginx Configuration
     exec(NGINX_TEST_CMD, (testErr, testStdout, testStderr) => {
       if (testErr) {
         fs.writeFileSync(NGINX_SITE_CONF_PATH, originalContent, 'utf8'); // Rollback
-        logAction(SWITCH_LOG_FILE, `FAILED Routing to ${port} - Error: Nginx validation failed. System rolled back.`);
+        logAction(SWITCH_LOG_FILE, `FAILED Routing to ${target} - Error: Nginx validation failed. System rolled back.`);
         return res.status(500).json({ error: 'Nginx validation test failed. Rollback applied.', details: testStderr || testErr.message });
       }
 
@@ -373,7 +449,7 @@ app.post('/api/backend/route', (req, res) => {
       exec(NGINX_RELOAD_CMD, (reloadErr, reloadStdout, reloadStderr) => {
         if (reloadErr) {
           fs.writeFileSync(NGINX_SITE_CONF_PATH, originalContent, 'utf8'); // Rollback
-          logAction(SWITCH_LOG_FILE, `FAILED Routing to ${port} - Error: Nginx reload failed. System rolled back.`);
+          logAction(SWITCH_LOG_FILE, `FAILED Routing to ${target} - Error: Nginx reload failed. System rolled back.`);
           return res.status(500).json({ error: 'Nginx reload failed. Rollback applied.', details: reloadStderr || reloadErr.message });
         }
 
@@ -384,8 +460,8 @@ app.post('/api/backend/route', (req, res) => {
           }
         } catch (e) {}
 
-        const successMsg = `Successfully routed public API traffic to port ${port}`;
-        logAction(SWITCH_LOG_FILE, `SUCCESS Routed to ${port}`);
+        const successMsg = `Successfully routed public API traffic to ${target === 'split' ? 'Both (Split Routing)' : 'Port ' + target}`;
+        logAction(SWITCH_LOG_FILE, `SUCCESS Routed to ${target}`);
         return res.json({ success: true, message: successMsg });
       });
     });
@@ -394,7 +470,7 @@ app.post('/api/backend/route', (req, res) => {
     if (originalContent) {
       fs.writeFileSync(NGINX_SITE_CONF_PATH, originalContent, 'utf8');
     }
-    logAction(SWITCH_LOG_FILE, `FAILED Routing to ${port} - Error: Exception: ${err.message}`);
+    logAction(SWITCH_LOG_FILE, `FAILED Routing to ${target} - Error: Exception: ${err.message}`);
     return res.status(500).json({ error: 'Execution exception encountered. Rollback applied.', details: err.message });
   }
 });
@@ -452,7 +528,6 @@ app.get('/api/process-logs', (req, res) => {
       logPath = proc.pm2_env.pm_out_log_path;
     }
 
-    // Simulation logs fallback if path doesn't exist
     if (!logPath || !fs.existsSync(logPath)) {
       if (processName === 'mathswithsd-v2') {
         logPath = path.join(LOGS_DIR, 'v2-sim.log');
@@ -467,7 +542,6 @@ app.get('/api/process-logs', (req, res) => {
       }
     }
 
-    // Read last 100 lines using tail on Linux or direct read fallback
     execFile('tail', ['-n', '100', logPath], (err, stdout, stderr) => {
       if (err) {
         try {
@@ -515,7 +589,7 @@ app.post('/api/dashboard/update', (req, res) => {
   }, 1000);
 });
 
-// Route: Get activity logs (Switch and Restart logs)
+// Route: Get activity logs
 app.get('/api/logs', (req, res) => {
   let switchLogs = '';
   let restartLogs = '';

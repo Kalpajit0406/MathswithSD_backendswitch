@@ -193,26 +193,40 @@ async function refreshDashboard() {
     // Upstream Banner
     currentActivePort = data.activePort;
     const activePortDisplay = document.getElementById('active-port-display');
-    activePortDisplay.textContent = data.activePort ? data.activePort : 'UNROUTED';
+    activePortDisplay.textContent = data.activePort === 'split' ? 'BOTH (SPLIT)' : (data.activePort ? data.activePort : 'UNROUTED');
 
     const btn5000 = document.getElementById('btn-route-5000');
     const btn5001 = document.getElementById('btn-route-5001');
+    const btnSplit = document.getElementById('btn-route-split');
 
     if (data.activePort === 5000) {
       btn5000.className = 'btn btn-secondary';
       btn5000.disabled = true;
       btn5001.className = 'btn btn-primary';
       btn5001.disabled = false;
+      btnSplit.className = 'btn btn-primary';
+      btnSplit.disabled = false;
     } else if (data.activePort === 5001) {
       btn5000.className = 'btn btn-primary';
       btn5000.disabled = false;
       btn5001.className = 'btn btn-secondary';
       btn5001.disabled = true;
+      btnSplit.className = 'btn btn-primary';
+      btnSplit.disabled = false;
+    } else if (data.activePort === 'split') {
+      btn5000.className = 'btn btn-primary';
+      btn5000.disabled = false;
+      btn5001.className = 'btn btn-primary';
+      btn5001.disabled = false;
+      btnSplit.className = 'btn btn-secondary';
+      btnSplit.disabled = true;
     } else {
       btn5000.className = 'btn btn-primary';
       btn5000.disabled = false;
       btn5001.className = 'btn btn-primary';
       btn5001.disabled = false;
+      btnSplit.className = 'btn btn-primary';
+      btnSplit.disabled = false;
     }
 
     // API Probes
@@ -396,10 +410,14 @@ function closeModal() {
 
 // Modal confirmation: Route switching
 function confirmRoute(port) {
-  const name = port === 5000 ? 'App Backend (5000)' : 'Website Backend (5001)';
+  let name = '';
+  if (port === 5000) name = 'App Backend (5000)';
+  else if (port === 5001) name = 'Website Backend (5001)';
+  else if (port === 'split') name = 'Both Backends (Split Routing: /api -> 5000, / -> 5001)';
+  
   showModal(
     'Confirm Upstream Router Switch',
-    `Are you sure you want to route public Nginx traffic (api.mathswithsd.in) to the ${name}? This will validate the configuration and reload Nginx. Neither backend will be stopped.`,
+    `Are you sure you want to route public Nginx traffic (api.mathswithsd.in) to ${name}? This will validate the configuration and reload Nginx. Both backends will remain online.`,
     async () => {
       const confirmBtn = document.getElementById('modal-confirm-btn');
       const errorBox = document.getElementById('modal-error');
