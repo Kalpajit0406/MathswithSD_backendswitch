@@ -1,0 +1,20 @@
+{
+  "currentTarget": "http://localhost:5000",
+  "targets": [
+    {
+      "name": "Local Backend",
+      "url": "http://localhost:5000",
+      "description": "Local development server running on port 5000"
+    },
+    {
+      "name": "Production API",
+      "url": "https://api.mathswithsd.in",
+      "description": "Live production environment"
+    },
+    {
+      "name": "Staging API",
+      "url": "https://staging.mathswithsd.in",
+      "description": "Staging environment for testing"
+    }
+  ]
+}

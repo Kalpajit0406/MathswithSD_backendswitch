@@ -1,0 +1,14 @@
+{
+  "name": "mathswithsd-backend-switch",
+  "version": "2.0.0",
+  "description": "Production-grade reverse proxy switcher and PM2 dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "dotenv": "^16.4.5"
+  }
+}

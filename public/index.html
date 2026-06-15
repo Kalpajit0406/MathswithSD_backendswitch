@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MathsWithSD — Production Management Dashboard</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="logo-box">
+        <i class="fa-solid fa-server"></i>
+      </div>
+      <div class="brand-text">
+        <h1>MathsWithSD Gateway</h1>
+        <p>Production Switcher & Monitor</p>
+      </div>
+    </div>
+    
+    <div class="system-meta-row">
+      <div class="meta-item">
+        <span class="label">Host</span>
+        <span class="value" id="sys-hostname">Loading...</span>
+      </div>
+      <div class="meta-item">
+        <span class="label">Public IP</span>
+        <span class="value" id="sys-public-ip">Loading...</span>
+      </div>
+      <div class="meta-item">
+        <span class="label">Node.js</span>
+        <span class="value" id="sys-node-version">Loading...</span>
+      </div>
+      <div class="meta-item">
+        <span class="label">Uptime</span>
+        <span class="value" id="sys-uptime">Loading...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <main class="dashboard-grid">
+    
+    <!-- LEFT: System Health & Charts -->
+    <section class="grid-col-1">
+      
+      <!-- Current State Banner -->
+      <div class="card active-banner-card">
+        <div class="banner-flex">
+          <div>
+            <h3>Active Upstream Backend Target</h3>
+            <p class="desc">Traffic coming to ports 80/443 is dynamically routed here</p>
+          </div>
+          <div class="port-badge-container">
+            <span class="port-badge" id="active-port-display">--</span>
+          </div>
+        </div>
+        
+        <div class="switch-actions-row">
+          <button class="btn btn-primary" onclick="confirmSwitch(5000)" id="btn-switch-5000">
+            <i class="fa-solid fa-shuffle"></i> Route to Port 5000 (V2 API)
+          </button>
+          <button class="btn btn-secondary" onclick="confirmSwitch(5001)" id="btn-switch-5001">
+            <i class="fa-solid fa-shuffle"></i> Route to Port 5001 (Web Client)
+          </button>
+        </div>
+      </div>
+
+      <!-- Realtime Metrics Charts -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fa-solid fa-chart-line"></i> Realtime CPU Usage</h2>
+          <span class="metric-val" id="cpu-percent">--%</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="cpuChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Memory & Disk Cards in a Row -->
+      <div class="metrics-subgrid">
+        
+        <!-- RAM Usage Gauge -->
+        <div class="card metric-card">
+          <div class="card-header">
+            <h2 class="card-title"><i class="fa-solid fa-memory"></i> Memory (RAM)</h2>
+          </div>
+          <div class="progress-radial-wrapper">
+            <div class="gauge-bar-outer">
+              <div class="gauge-bar-inner" id="ram-bar" style="width: 0%"></div>
+            </div>
+            <div class="gauge-legend">
+              <span id="ram-used">0 GB</span> / <span id="ram-total">0 GB</span> (<span id="ram-percent">0%</span>)
+            </div>
+          </div>
+        </div>
+
+        <!-- Disk Usage Gauge -->
+        <div class="card metric-card">
+          <div class="card-header">
+            <h2 class="card-title"><i class="fa-solid fa-hard-drive"></i> Disk Space</h2>
+          </div>
+          <div class="progress-radial-wrapper">
+            <div class="gauge-bar-outer">
+              <div class="gauge-bar-inner disk-bar" id="disk-bar" style="width: 0%"></div>
+            </div>
+            <div class="gauge-legend">
+              <span id="disk-used">0 GB</span> / <span id="disk-total">0 GB</span> (<span id="disk-percent">0%</span>)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Network and Load averages -->
+      <div class="metrics-subgrid">
+        <div class="card data-display-card">
+          <h3 class="data-title"><i class="fa-solid fa-network-wired"></i> Network Throughput</h3>
+          <div class="data-row">
+            <span>Download (RX Speed)</span>
+            <strong class="value" id="net-rx">0 KB/s</strong>
+          </div>
+          <div class="data-row">
+            <span>Upload (TX Speed)</span>
+            <strong class="value" id="net-tx">0 KB/s</strong>
+          </div>
+        </div>
+        <div class="card data-display-card">
+          <h3 class="data-title"><i class="fa-solid fa-gauge-high"></i> System Load Average</h3>
+          <div class="data-row">
+            <span>Load Average (1m / 5m / 15m)</span>
+            <strong class="value" id="sys-load">0.00 / 0.00 / 0.00</strong>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT: PM2, Dashboard Control, and System Logs -->
+    <section class="grid-col-2">
+      
+      <!-- PM2 Processes -->
+      <div class="card pm2-card">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fa-solid fa-list-check"></i> PM2 Process Management</h2>
+          <button class="btn btn-secondary btn-icon" onclick="refreshDashboard()" title="Refresh Status">
+            <i class="fa-solid fa-arrows-rotate"></i>
+          </button>
+        </div>
+        
+        <div class="table-responsive">
+          <table class="pm2-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Process Name</th>
+                <th>Status</th>
+                <th>Restarts</th>
+                <th>Memory</th>
+                <th>CPU</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="pm2-process-rows">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Dashboard Controls -->
+      <div class="card dashboard-controls-card">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fa-solid fa-gears"></i> Dashboard Operations</h2>
+        </div>
+        <div class="controls-grid">
+          <button class="btn btn-danger" onclick="confirmRestart('mathswithsd-v2')">
+            <i class="fa-solid fa-power-off"></i> Restart V2 API
+          </button>
+          <button class="btn btn-danger" onclick="confirmRestart('mathswithsd-web')">
+            <i class="fa-solid fa-power-off"></i> Restart Web Client
+          </button>
+          <button class="btn btn-warning" onclick="confirmRestart('dashboard')">
+            <i class="fa-solid fa-arrow-rotate-left"></i> Restart Dashboard
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Log Streamer -->
+      <div class="card logs-card">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fa-solid fa-terminal"></i> Activity Log Stream</h2>
+          <div class="log-toggles">
+            <button class="log-toggle-btn active" id="toggle-switch-logs" onclick="showLogTab('switch')">Switch Actions</button>
+            <button class="log-toggle-btn" id="toggle-restart-logs" onclick="showLogTab('restart')">Restart Actions</button>
+          </div>
+        </div>
+        
+        <div class="log-stream-container" id="log-terminal">
+          <!-- Log lines will render here -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer>
+    <p>MathsWithSD Node.js Reverse Proxy Gateway Controller • DigitalOcean Cluster Manager</p>
+  </footer>
+
+  <!-- Confirmation Modals -->
+  <div class="modal-overlay" id="confirm-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">Confirm Action</h3>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="modal-message">Are you sure you want to perform this operation?</p>
+        <div class="modal-error-box" id="modal-error" style="display: none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" id="modal-confirm-btn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>
