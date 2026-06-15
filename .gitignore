@@ -1,2 +1,13 @@
-.env
+# Node dependencies
 node_modules/
+
+# Environment configurations
+.env
+
+# Local logs
+logs/
+
+# Nginx Backups & Local Simulations
+*.conf.bak
+mathswithsd-upstream.conf
+config.json
