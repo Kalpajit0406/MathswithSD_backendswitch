@@ -3,36 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MathsWithSD — Production Management Dashboard</title>
+  <title>MathsWithSD — Infrastructure Dashboard</title>
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   
   <!-- Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- Chart.js CDN -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
-  <!-- Stylesheet -->
+  <!-- Style -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- Top Navbar -->
+  <!-- Top Navigation Bar -->
   <header class="navbar">
     <div class="brand">
       <div class="logo-box">
-        <i class="fa-solid fa-server"></i>
+        <i class="fa-solid fa-cube"></i>
       </div>
       <div class="brand-text">
-        <h1>MathsWithSD Gateway</h1>
-        <p>Production Switcher & Monitor</p>
+        <h1>MathsWithSD</h1>
+        <p>Infrastructure Control Panel</p>
       </div>
     </div>
     
+    <nav class="nav-links">
+      <button class="nav-tab active" id="tab-btn-infra" onclick="switchMainTab('infra')">
+        <i class="fa-solid fa-network-wired"></i> Infrastructure
+      </button>
+      <button class="nav-tab" id="tab-btn-logs" onclick="switchMainTab('logs')">
+        <i class="fa-solid fa-terminal"></i> Process Logs
+      </button>
+    </nav>
+
     <div class="system-meta-row">
       <div class="meta-item">
         <span class="label">Host</span>
@@ -43,187 +52,219 @@
         <span class="value" id="sys-public-ip">Loading...</span>
       </div>
       <div class="meta-item">
-        <span class="label">Node.js</span>
-        <span class="value" id="sys-node-version">Loading...</span>
-      </div>
-      <div class="meta-item">
         <span class="label">Uptime</span>
         <span class="value" id="sys-uptime">Loading...</span>
       </div>
+      <button class="btn btn-secondary btn-update" onclick="confirmUpdate()" title="Update dashboard repository and packages">
+        <i class="fa-solid fa-cloud-arrow-down"></i> Update Panel
+      </button>
     </div>
   </header>
 
-  <!-- Main Layout -->
-  <main class="dashboard-grid">
+  <!-- Main View Grid -->
+  <main class="container">
     
-    <!-- LEFT: System Health & Charts -->
-    <section class="grid-col-1">
-      
-      <!-- Current State Banner -->
-      <div class="card active-banner-card">
-        <div class="banner-flex">
-          <div>
-            <h3>Active Upstream Backend Target</h3>
-            <p class="desc">Traffic coming to ports 80/443 is dynamically routed here</p>
-          </div>
-          <div class="port-badge-container">
-            <span class="port-badge" id="active-port-display">--</span>
-          </div>
-        </div>
+    <!-- ================= INFRASTRUCTURE TAB ================= -->
+    <div id="tab-content-infra" class="tab-pane active">
+      <div class="dashboard-grid">
         
-        <div class="switch-actions-row">
-          <button class="btn btn-primary" onclick="confirmSwitch(5000)" id="btn-switch-5000">
-            <i class="fa-solid fa-shuffle"></i> Route to Port 5000 (V2 API)
-          </button>
-          <button class="btn btn-secondary" onclick="confirmSwitch(5001)" id="btn-switch-5001">
-            <i class="fa-solid fa-shuffle"></i> Route to Port 5001 (Web Client)
-          </button>
-        </div>
-      </div>
-
-      <!-- Realtime Metrics Charts -->
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title"><i class="fa-solid fa-chart-line"></i> Realtime CPU Usage</h2>
-          <span class="metric-val" id="cpu-percent">--%</span>
-        </div>
-        <div class="chart-container">
-          <canvas id="cpuChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Memory & Disk Cards in a Row -->
-      <div class="metrics-subgrid">
-        
-        <!-- RAM Usage Gauge -->
-        <div class="card metric-card">
-          <div class="card-header">
-            <h2 class="card-title"><i class="fa-solid fa-memory"></i> Memory (RAM)</h2>
-          </div>
-          <div class="progress-radial-wrapper">
-            <div class="gauge-bar-outer">
-              <div class="gauge-bar-inner" id="ram-bar" style="width: 0%"></div>
+        <!-- LEFT COLUMN: Routing, Health Checks, Charts -->
+        <div class="grid-col-1">
+          
+          <!-- Routing Control Banner -->
+          <div class="card routing-card">
+            <div class="card-header">
+              <h2 class="card-title"><i class="fa-solid fa-route"></i> Active Public Nginx Route</h2>
+              <span class="port-badge" id="active-port-display">--</span>
             </div>
-            <div class="gauge-legend">
-              <span id="ram-used">0 GB</span> / <span id="ram-total">0 GB</span> (<span id="ram-percent">0%</span>)
+            <p class="desc" style="margin-bottom: 1.5rem;">
+              Configure public Nginx traffic forwarding on <code>api.mathswithsd.in</code>. Both backends stay online.
+            </p>
+            
+            <div class="route-actions-row">
+              <button class="btn btn-primary" onclick="confirmRoute(5000)" id="btn-route-5000">
+                <i class="fa-solid fa-network-wired"></i> Route Public API To App Backend (5000)
+              </button>
+              <button class="btn btn-primary" onclick="confirmRoute(5001)" id="btn-route-5001">
+                <i class="fa-solid fa-globe"></i> Route Public API To Website Backend (5001)
+              </button>
             </div>
           </div>
-        </div>
 
-        <!-- Disk Usage Gauge -->
-        <div class="card metric-card">
-          <div class="card-header">
-            <h2 class="card-title"><i class="fa-solid fa-hard-drive"></i> Disk Space</h2>
-          </div>
-          <div class="progress-radial-wrapper">
-            <div class="gauge-bar-outer">
-              <div class="gauge-bar-inner disk-bar" id="disk-bar" style="width: 0%"></div>
+          <!-- API Health Checks -->
+          <div class="card health-card">
+            <div class="card-header">
+              <h2 class="card-title"><i class="fa-solid fa-heart-pulse"></i> Service API Health Probes</h2>
             </div>
-            <div class="gauge-legend">
-              <span id="disk-used">0 GB</span> / <span id="disk-total">0 GB</span> (<span id="disk-percent">0%</span>)
+            <div class="health-grid">
+              
+              <!-- Port 5000 Health Card -->
+              <div class="health-item-card" id="health-5000-card">
+                <div class="health-badge-header">
+                  <span class="badge-title">Port 5000 Health</span>
+                  <span class="status-indicator offline" id="health-5000-badge">
+                    <span class="dot"></span><span class="text">OFFLINE</span>
+                  </span>
+                </div>
+                <div class="health-data-row">
+                  <span>HTTP Status</span>
+                  <strong id="health-5000-status">--</strong>
+                </div>
+                <div class="health-data-row">
+                  <span>Latency</span>
+                  <strong id="health-5000-latency">-- ms</strong>
+                </div>
+              </div>
+
+              <!-- Port 5001 Health Card -->
+              <div class="health-item-card" id="health-5001-card">
+                <div class="health-badge-header">
+                  <span class="badge-title">Port 5001 Health</span>
+                  <span class="status-indicator offline" id="health-5001-badge">
+                    <span class="dot"></span><span class="text">OFFLINE</span>
+                  </span>
+                </div>
+                <div class="health-data-row">
+                  <span>HTTP Status</span>
+                  <strong id="health-5001-status">--</strong>
+                </div>
+                <div class="health-data-row">
+                  <span>Latency</span>
+                  <strong id="health-5001-latency">-- ms</strong>
+                </div>
+              </div>
+
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Network and Load averages -->
-      <div class="metrics-subgrid">
-        <div class="card data-display-card">
-          <h3 class="data-title"><i class="fa-solid fa-network-wired"></i> Network Throughput</h3>
-          <div class="data-row">
-            <span>Download (RX Speed)</span>
-            <strong class="value" id="net-rx">0 KB/s</strong>
+          <!-- Live Graphs Card -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <h2 class="card-title"><i class="fa-solid fa-chart-line"></i> Realtime Resource History</h2>
+              <div class="chart-toggles">
+                <button class="chart-toggle-btn active" id="toggle-chart-cpu" onclick="showChartTab('cpu')">CPU</button>
+                <button class="chart-toggle-btn" id="toggle-chart-ram" onclick="showChartTab('ram')">RAM</button>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="resourceChart"></canvas>
+            </div>
           </div>
-          <div class="data-row">
-            <span>Upload (TX Speed)</span>
-            <strong class="value" id="net-tx">0 KB/s</strong>
-          </div>
-        </div>
-        <div class="card data-display-card">
-          <h3 class="data-title"><i class="fa-solid fa-gauge-high"></i> System Load Average</h3>
-          <div class="data-row">
-            <span>Load Average (1m / 5m / 15m)</span>
-            <strong class="value" id="sys-load">0.00 / 0.00 / 0.00</strong>
-          </div>
-        </div>
-      </div>
 
-    </section>
-
-    <!-- RIGHT: PM2, Dashboard Control, and System Logs -->
-    <section class="grid-col-2">
-      
-      <!-- PM2 Processes -->
-      <div class="card pm2-card">
-        <div class="card-header">
-          <h2 class="card-title"><i class="fa-solid fa-list-check"></i> PM2 Process Management</h2>
-          <button class="btn btn-secondary btn-icon" onclick="refreshDashboard()" title="Refresh Status">
-            <i class="fa-solid fa-arrows-rotate"></i>
-          </button>
         </div>
-        
-        <div class="table-responsive">
-          <table class="pm2-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Process Name</th>
-                <th>Status</th>
-                <th>Restarts</th>
-                <th>Memory</th>
-                <th>CPU</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="pm2-process-rows">
+
+        <!-- RIGHT COLUMN: System Info & Process Manager -->
+        <div class="grid-col-2">
+          
+          <!-- PM2 Managed Processes -->
+          <div class="card pm2-processes-card">
+            <div class="card-header">
+              <h2 class="card-title"><i class="fa-solid fa-boxes-stacked"></i> PM2 Backend Services</h2>
+              <button class="btn btn-secondary btn-icon" onclick="refreshDashboard()" title="Refresh Dashboard Stats">
+                <i class="fa-solid fa-arrows-rotate"></i>
+              </button>
+            </div>
+            
+            <div class="pm2-process-list" id="pm2-process-list-container">
               <!-- Rendered dynamically -->
-            </tbody>
-          </table>
+            </div>
+          </div>
+
+          <!-- Host Resources -->
+          <div class="card sys-resource-card">
+            <div class="card-header">
+              <h2 class="card-title"><i class="fa-solid fa-gauge-high"></i> Host Resource Monitor</h2>
+            </div>
+            
+            <!-- RAM Progress bar -->
+            <div class="resource-bar-wrapper">
+              <div class="resource-bar-header">
+                <span>Memory (RAM)</span>
+                <span id="sys-ram-label">0% (0 GB / 0 GB)</span>
+              </div>
+              <div class="progress-bar-outer">
+                <div class="progress-bar-inner ram" id="sys-ram-bar" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <!-- Disk Progress bar -->
+            <div class="resource-bar-wrapper">
+              <div class="resource-bar-header">
+                <span>Disk Space</span>
+                <span id="sys-disk-label">0% (0 GB / 0 GB)</span>
+              </div>
+              <div class="progress-bar-outer">
+                <div class="progress-bar-inner disk" id="sys-disk-bar" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <div class="stat-rows-group">
+              <div class="stat-row">
+                <span>Load Average (1m / 5m / 15m)</span>
+                <strong id="sys-load-avg">0.00 / 0.00 / 0.00</strong>
+              </div>
+              <div class="stat-row">
+                <span>Network RX (Download speed)</span>
+                <strong id="sys-net-rx">0 KB/s</strong>
+              </div>
+              <div class="stat-row">
+                <span>Network TX (Upload speed)</span>
+                <strong id="sys-net-tx">0 KB/s</strong>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
+    </div>
 
-      <!-- Dashboard Controls -->
-      <div class="card dashboard-controls-card">
-        <div class="card-header">
-          <h2 class="card-title"><i class="fa-solid fa-gears"></i> Dashboard Operations</h2>
-        </div>
-        <div class="controls-grid">
-          <button class="btn btn-danger" onclick="confirmRestart('mathswithsd-v2')">
-            <i class="fa-solid fa-power-off"></i> Restart V2 API
-          </button>
-          <button class="btn btn-danger" onclick="confirmRestart('mathswithsd-web')">
-            <i class="fa-solid fa-power-off"></i> Restart Web Client
-          </button>
-          <button class="btn btn-warning" onclick="confirmRestart('dashboard')">
-            <i class="fa-solid fa-arrow-rotate-left"></i> Restart Dashboard
-          </button>
-        </div>
-      </div>
+    <!-- ================= PROCESS LOGS TAB ================= -->
+    <div id="tab-content-logs" class="tab-pane">
+      <div class="logs-layout-grid">
+        
+        <!-- Logs Controller -->
+        <div class="card logs-controller-card">
+          <div class="card-header">
+            <h2 class="card-title"><i class="fa-solid fa-terminal"></i> Log Viewer</h2>
+          </div>
+          
+          <div class="form-group">
+            <label for="log-process-select">Select Process Log Stream</label>
+            <select id="log-process-select" onchange="loadProcessLogs()">
+              <option value="mathswithsd-v2">mathswithsd-v2 (Port 5000)</option>
+              <option value="mathswithsd-web">mathswithsd-web (Port 5001)</option>
+              <option value="backend-switch">backend-switch (Dashboard)</option>
+            </select>
+          </div>
 
-      <!-- Live Log Streamer -->
-      <div class="card logs-card">
-        <div class="card-header">
-          <h2 class="card-title"><i class="fa-solid fa-terminal"></i> Activity Log Stream</h2>
-          <div class="log-toggles">
-            <button class="log-toggle-btn active" id="toggle-switch-logs" onclick="showLogTab('switch')">Switch Actions</button>
-            <button class="log-toggle-btn" id="toggle-restart-logs" onclick="showLogTab('restart')">Restart Actions</button>
+          <div class="log-control-buttons">
+            <button class="btn btn-secondary" style="width: 100%; justify-content: center;" onclick="loadProcessLogs()">
+              <i class="fa-solid fa-arrows-rotate"></i> Refresh Logs
+            </button>
           </div>
         </div>
-        
-        <div class="log-stream-container" id="log-terminal">
-          <!-- Log lines will render here -->
-        </div>
-      </div>
 
-    </section>
+        <!-- Terminal Viewer -->
+        <div class="card logs-viewer-card">
+          <div class="card-header">
+            <span class="terminal-title" id="terminal-process-title">Process: mathswithsd-v2 (100 lines)</span>
+            <span class="terminal-dot"></span>
+          </div>
+          <div class="terminal-box" id="process-log-terminal">
+            <!-- Rendered logs -->
+          </div>
+        </div>
+
+      </div>
+    </div>
 
   </main>
 
   <footer>
-    <p>MathsWithSD Node.js Reverse Proxy Gateway Controller • DigitalOcean Cluster Manager</p>
+    <p>MathsWithSD Dashboard Gateway Controller • Heterogeneous Infrastructure System</p>
   </footer>
 
-  <!-- Confirmation Modals -->
+  <!-- Confirmation Modal -->
   <div class="modal-overlay" id="confirm-modal">
     <div class="modal">
       <div class="modal-header">
@@ -241,6 +282,6 @@
     </div>
   </div>
 
-  <script src="dashboard.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
