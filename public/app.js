@@ -199,41 +199,23 @@ async function refreshDashboard() {
 
     // Upstream Banner
     currentActivePort = data.activePort;
-    const activePortDisplay = document.getElementById('active-port-display');
-    activePortDisplay.textContent = data.activePort === 'split' ? 'BOTH (SPLIT)' : (data.activePort ? data.activePort : 'UNROUTED');
+    const routeApiTarget = document.getElementById('route-api-target');
+    if (routeApiTarget) {
+      routeApiTarget.textContent = data.activePort === 'split' ? 'Split (5000 / 5001)' : `Port ${data.activePort || 'Unrouted'}`;
+    }
 
     const btn5000 = document.getElementById('btn-route-5000');
     const btn5001 = document.getElementById('btn-route-5001');
-    const btnSplit = document.getElementById('btn-route-split');
 
     if (data.activePort === 5000) {
-      btn5000.className = 'btn btn-secondary';
-      btn5000.disabled = true;
-      btn5001.className = 'btn btn-primary';
-      btn5001.disabled = false;
-      btnSplit.className = 'btn btn-primary';
-      btnSplit.disabled = false;
+      if (btn5000) { btn5000.className = 'btn btn-secondary'; btn5000.disabled = true; }
+      if (btn5001) { btn5001.className = 'btn btn-primary'; btn5001.disabled = false; }
     } else if (data.activePort === 5001) {
-      btn5000.className = 'btn btn-primary';
-      btn5000.disabled = false;
-      btn5001.className = 'btn btn-secondary';
-      btn5001.disabled = true;
-      btnSplit.className = 'btn btn-primary';
-      btnSplit.disabled = false;
-    } else if (data.activePort === 'split') {
-      btn5000.className = 'btn btn-primary';
-      btn5000.disabled = false;
-      btn5001.className = 'btn btn-primary';
-      btn5001.disabled = false;
-      btnSplit.className = 'btn btn-secondary';
-      btnSplit.disabled = true;
+      if (btn5000) { btn5000.className = 'btn btn-primary'; btn5000.disabled = false; }
+      if (btn5001) { btn5001.className = 'btn btn-secondary'; btn5001.disabled = true; }
     } else {
-      btn5000.className = 'btn btn-primary';
-      btn5000.disabled = false;
-      btn5001.className = 'btn btn-primary';
-      btn5001.disabled = false;
-      btnSplit.className = 'btn btn-primary';
-      btnSplit.disabled = false;
+      if (btn5000) { btn5000.className = 'btn btn-primary'; btn5000.disabled = false; }
+      if (btn5001) { btn5001.className = 'btn btn-primary'; btn5001.disabled = false; }
     }
 
     // API Probes
@@ -353,12 +335,15 @@ function renderPm2Processes(processes) {
 async function loadProcessLogs() {
   const select = document.getElementById('log-process-select');
   const processName = select.value;
+  const typeSelect = document.getElementById('log-type-select');
+  const logType = typeSelect ? typeSelect.value : 'out';
   const terminal = document.getElementById('process-log-terminal');
   
-  document.getElementById('terminal-process-title').textContent = `Process: ${processName} (100 lines)`;
+  const typeLabel = logType === 'err' ? 'Error Logs (stderr)' : 'Output Logs (stdout)';
+  document.getElementById('terminal-process-title').textContent = `Process: ${processName} — ${typeLabel} (100 lines)`;
 
   try {
-    const res = await fetch(`/api/process-logs?processName=${encodeURIComponent(processName)}`);
+    const res = await fetch(`/api/process-logs?processName=${encodeURIComponent(processName)}&logType=${logType}`);
     if (res.ok) {
       const data = await res.json();
       terminal.innerHTML = '';

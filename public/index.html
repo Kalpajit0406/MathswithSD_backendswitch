@@ -78,22 +78,37 @@
           <!-- Routing Control Banner -->
           <div class="card routing-card">
             <div class="card-header">
-              <h2 class="card-title"><i class="fa-solid fa-route"></i> Active Public Nginx Route</h2>
-              <span class="port-badge" id="active-port-display">--</span>
+              <h2 class="card-title"><i class="fa-solid fa-route"></i> Upstream Gateway Routing</h2>
             </div>
-            <p class="desc" style="margin-bottom: 1.5rem;">
-              Configure public Nginx traffic forwarding on <code>api.mathswithsd.in</code>. Both backends stay online.
+            
+            <div class="routing-status-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+              <div class="route-status-item" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px;">
+                <span class="label" style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">api.mathswithsd.in (Website API)</span>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem;">
+                  <strong style="font-size: 1.1rem; color: var(--color-primary);" id="route-api-target">Port 5001</strong>
+                  <span class="status-indicator online" style="font-size: 0.75rem;"><span class="dot"></span>Active</span>
+                </div>
+              </div>
+              
+              <div class="route-status-item" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px;">
+                <span class="label" style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">apiv2.mathswithsd.in (App API)</span>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem;">
+                  <strong style="font-size: 1.1rem; color: #10b981;">Port 5000</strong>
+                  <span class="status-indicator online" style="font-size: 0.75rem;"><span class="dot"></span>Dedicated</span>
+                </div>
+              </div>
+            </div>
+
+            <p class="desc" style="margin-bottom: 1.5rem; font-size: 0.85rem; color: var(--text-muted);">
+              Manage gateway routing for <code>api.mathswithsd.in</code>. Note: <code>apiv2.mathswithsd.in</code> is dedicated to Port 5000 (App Backend).
             </p>
             
-            <div class="route-actions-row">
-              <button class="btn btn-primary" onclick="confirmRoute(5000)" id="btn-route-5000">
-                <i class="fa-solid fa-network-wired"></i> Route Public API To App Backend (5000)
+            <div class="route-actions-row" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+              <button class="btn btn-primary" onclick="confirmRoute(5001)" id="btn-route-5001" style="flex: 1; justify-content: center;">
+                <i class="fa-solid fa-globe"></i> Route api.mathswithsd.in to Port 5001 (Website)
               </button>
-              <button class="btn btn-primary" onclick="confirmRoute(5001)" id="btn-route-5001">
-                <i class="fa-solid fa-globe"></i> Route Public API To Website Backend (5001)
-              </button>
-              <button class="btn btn-primary" onclick="confirmRoute('split')" id="btn-route-split">
-                <i class="fa-solid fa-code-fork"></i> Route Both (API -> 5000, Website -> 5001)
+              <button class="btn btn-primary" onclick="confirmRoute(5000)" id="btn-route-5000" style="flex: 1; justify-content: center;">
+                <i class="fa-solid fa-network-wired"></i> Route api.mathswithsd.in to Port 5000 (App)
               </button>
             </div>
           </div>
@@ -241,6 +256,14 @@
               <option value="mathswithsd-v2">mathswithsd-v2 (Port 5000)</option>
               <option value="mathswithsd-web">mathswithsd-web (Port 5001)</option>
               <option value="backend-switch">backend-switch (Dashboard)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-top: 1rem;">
+            <label for="log-type-select">Select Log Type</label>
+            <select id="log-type-select" onchange="loadProcessLogs()">
+              <option value="out">Output Logs (stdout)</option>
+              <option value="err">Error Logs (stderr)</option>
             </select>
           </div>
 

@@ -328,7 +328,8 @@ function getPm2Processes(callback) {
           pm_uptime: proc.pm2_env ? proc.pm2_env.pm_uptime : 0,
           restart_time: proc.pm2_env ? proc.pm2_env.restart_time : 0,
           node_version: proc.pm2_env ? proc.pm2_env.node_version : 'N/A',
-          pm_out_log_path: proc.pm2_env ? proc.pm2_env.pm_out_log_path : ''
+          pm_out_log_path: proc.pm2_env ? proc.pm2_env.pm_out_log_path : '',
+          pm_err_log_path: proc.pm2_env ? proc.pm2_env.pm_err_log_path : ''
         }
       }));
       callback(mapped);
@@ -513,7 +514,7 @@ app.post('/api/backend/process-control', (req, res) => {
 
 // Route: Fetch process logs (latest 100 lines)
 app.get('/api/process-logs', (req, res) => {
-  const { processName } = req.query;
+  const { processName, logType } = req.query;
   const whitelistedApps = ['mathswithsd-v2', 'mathswithsd-web', 'backend-switch'];
   
   if (!whitelistedApps.includes(processName)) {
@@ -524,21 +525,22 @@ app.get('/api/process-logs', (req, res) => {
     const proc = pm2Procs.find(p => p.name === processName);
     let logPath = '';
 
-    if (proc && proc.pm2_env && proc.pm2_env.pm_out_log_path) {
-      logPath = proc.pm2_env.pm_out_log_path;
+    if (proc && proc.pm2_env) {
+      logPath = (logType === 'err') ? proc.pm2_env.pm_err_log_path : proc.pm2_env.pm_out_log_path;
     }
 
     if (!logPath || !fs.existsSync(logPath)) {
+      const suffix = (logType === 'err') ? '-error' : '';
       if (processName === 'mathswithsd-v2') {
-        logPath = path.join(LOGS_DIR, 'v2-sim.log');
+        logPath = path.join(LOGS_DIR, `v2-sim${suffix}.log`);
       } else if (processName === 'mathswithsd-web') {
-        logPath = path.join(LOGS_DIR, 'web-sim.log');
+        logPath = path.join(LOGS_DIR, `web-sim${suffix}.log`);
       } else {
         logPath = SWITCH_LOG_FILE;
       }
 
       if (!fs.existsSync(logPath)) {
-        fs.writeFileSync(logPath, `[${new Date().toISOString()}] Simulation logs started for ${processName}\n`, 'utf8');
+        fs.writeFileSync(logPath, `[${new Date().toISOString()}] Simulation logs started for ${processName} (${logType || 'out'})\n`, 'utf8');
       }
     }
 
