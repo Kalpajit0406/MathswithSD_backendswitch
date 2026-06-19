@@ -277,6 +277,34 @@ server {
 
     ssl_certificate /etc/letsencrypt/live/api.mathswithsd.in/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/api.mathswithsd.in/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+${locationBlocks}
+}
+
+server {
+    client_max_body_size 100M;
+    listen 80;
+    listen [::]:80;
+
+    server_name apiv2.mathswithsd.in;
+
+    return 301 https://$host$request_uri;
+}
+
+server {
+    client_max_body_size 100M;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+
+    server_name apiv2.mathswithsd.in;
+
+    ssl_certificate /etc/letsencrypt/live/apiv2.mathswithsd.in/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/apiv2.mathswithsd.in/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
 ${locationBlocks}
 }
 `;
